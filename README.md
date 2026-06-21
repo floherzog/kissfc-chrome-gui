@@ -2,7 +2,9 @@
 
 The KISS GUI is the crossplatform configuration tool for the [Flyduino](https://flyduino.net) flight control system like the KISSfc, KISScc and KISSfcV2F7
 
-It runs as an app within Google Chrome and allows you to configure the flight controller
+It is a standalone, cross‑platform desktop app (built on [NW.js](https://nwjs.io), which embeds Chromium) that lets you configure the flight controller.
+
+> _Historical note: this project began as a Google Chrome App (hence the `chrome-gui` name). Google removed Chrome App support from desktop Chrome, so it is now distributed only as the standalone NW.js build — it no longer runs inside Google Chrome._
 
 ---
 
@@ -24,7 +26,7 @@ It runs as an app within Google Chrome and allows you to configure the flight co
 
 ## Installation
 
-Depending on target operating system, _KISS GUI_ is distributed as _standalone_ application or Chrome App.
+_KISS GUI_ is distributed as a _standalone_ application for macOS, Windows and Linux. (It was formerly also offered as a Chrome App; that distribution is discontinued.)
 
 
 ## Supported Hardware
