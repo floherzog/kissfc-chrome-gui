@@ -25,129 +25,73 @@ CONTENT.configuration.initialize = function (callback) {
         copyFrom.remove();
     }
 
+    // NW.js note: chrome.fileSystem.chooseEntry() fails under NW.js with
+    // "Invalid calling page. This function can't be called from a background
+    // page.", so backup/restore use NW.js native file dialogs (<input nwsaveas>
+    // / <input type=file>) plus Node's fs instead.
+    function nwFileDialog(opts, onPath) {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.style.display = 'none';
+        if (opts.accept) input.setAttribute('accept', opts.accept);
+        if (opts.saveAs) input.setAttribute('nwsaveas', opts.saveAs);
+        input.addEventListener('change', function () {
+            var path = this.value;
+            document.body.removeChild(input);
+            onPath(path || null);
+        }, false);
+        document.body.appendChild(input);
+        input.click();
+    }
+
     function backupConfig() {
-        var chosenFileEntry = null;
-
-        var accepts = [{
-            extensions: ['txt']
-        }];
-
-        chrome.fileSystem.chooseEntry({
-            type: 'saveFile',
-            suggestedName: 'kissfc-backup',
-            accepts: accepts
-        }, function (fileEntry) {
-            if (chrome.runtime.lastError) {
-                console.error(chrome.runtime.lastError.message);
-                return;
+        var config = kissProtocol.data[kissProtocol.GET_SETTINGS];
+        var json = JSON.stringify(config, function (k, v) {
+            if (k === 'buffer' || k === 'isActive' || k === 'actKey' || k === 'SN') {
+                return undefined;
+            } else {
+                return v;
             }
+        }, 2);
 
-            if (!fileEntry) {
+        var p2 = function (n) { return ('0' + n).slice(-2); };
+        var d = new Date();
+        var stamp = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) +
+                    '_' + p2(d.getHours()) + p2(d.getMinutes()) + p2(d.getSeconds());
+        var suggestedName = 'kissfc-backup-' + stamp + '.txt';
+
+        nwFileDialog({ saveAs: suggestedName, accept: '.txt' }, function (path) {
+            if (!path) {
                 console.log('No file selected.');
                 return;
             }
-
-            chosenFileEntry = fileEntry;
-
-            chrome.fileSystem.getDisplayPath(chosenFileEntry, function (path) {
-                console.log('Export to file: ' + path);
-            });
-
-            chrome.fileSystem.getWritableEntry(chosenFileEntry, function (fileEntryWritable) {
-
-                chrome.fileSystem.isWritableEntry(fileEntryWritable, function (isWritable) {
-                    if (isWritable) {
-                        chosenFileEntry = fileEntryWritable;
-                        var config = kissProtocol.data[kissProtocol.GET_SETTINGS];
-                        var json = JSON.stringify(config, function (k, v) {
-                            if (k === 'buffer' || k === 'isActive' || k === 'actKey' || k === 'SN') {
-                                return undefined;
-                            } else {
-                                return v;
-                            }
-                        }, 2);
-                        var blob = new Blob([json], {
-                            type: 'text/plain'
-                        });
-
-                        chosenFileEntry.createWriter(function (writer) {
-                            writer.onerror = function (e) {
-                                console.error(e);
-                            };
-
-                            var truncated = false;
-                            writer.onwriteend = function () {
-                                if (!truncated) {
-                                    truncated = true;
-                                    writer.truncate(blob.size);
-                                    return;
-                                }
-                                console.log('Config has been exported');
-                            };
-
-                            writer.write(blob);
-                        }, function (e) {
-                            console.error(e);
-                        });
-                    } else {
-                        console.log('Cannot write to read only file.');
-                    }
-                });
-            });
+            try {
+                require('fs').writeFileSync(path, json);
+                console.log('Config has been exported to: ' + path);
+            } catch (e) {
+                console.error('Backup failed: ' + e);
+            }
         });
     };
 
     function restoreConfig(callback) {
-        var chosenFileEntry = null;
-
-        var accepts = [{
-            extensions: ['txt']
-        }];
-
-        chrome.fileSystem.chooseEntry({
-            type: 'openFile',
-            accepts: accepts
-        }, function (fileEntry) {
-            if (chrome.runtime.lastError) {
-                console.error(chrome.runtime.lastError.message);
-                return;
-            }
-
-            if (!fileEntry) {
+        nwFileDialog({ accept: '.txt' }, function (path) {
+            if (!path) {
                 console.log('No file selected, restore aborted.');
                 return;
             }
-
-            chosenFileEntry = fileEntry;
-
-            chrome.fileSystem.getDisplayPath(chosenFileEntry, function (path) {
-                console.log('Import config from: ' + path);
-            });
-
-            chosenFileEntry.file(function (file) {
-                var reader = new FileReader();
-
-                reader.onprogress = function (e) {
-                    if (e.total > 4096) {
-                        console.log('File limit (4 KB) exceeded, aborting');
-                        reader.abort();
-                    }
-                };
-
-                reader.onloadend = function (e) {
-                    if (e.total != 0 && e.total == e.loaded) {
-                        console.log('Read OK');
-                        try {
-                            var json = JSON.parse(e.target.result);
-                            if (callback) callback(json);
-                        } catch (e) {
-                            console.log('Wrong file');
-                            return;
-                        }
-                    }
-                };
-                reader.readAsText(file);
-            });
+            console.log('Import config from: ' + path);
+            try {
+                var content = require('fs').readFileSync(path, 'utf8');
+                if (content.length > 4096) {
+                    console.log('File limit (4 KB) exceeded, aborting');
+                    return;
+                }
+                var json = JSON.parse(content);
+                if (callback) callback(json);
+            } catch (e) {
+                console.log('Wrong file: ' + e);
+            }
         });
     };
 

@@ -4,6 +4,23 @@ The KISS GUI is the crossplatform configuration tool for the [Flyduino](https://
 
 It runs as an app within Google Chrome and allows you to configure the flight controller
 
+---
+
+> ### ⚠️ Unofficial community build (Apple Silicon / macOS)
+> This is an **unofficial community fork** — **not affiliated with or endorsed by Flyduino**.
+> It rebuilds the macOS app natively for **Apple Silicon (arm64)** so it no longer crashes
+> under Rosetta on recent macOS, and fixes a few bugs (Backup/Restore, firmware file pickers,
+> serial reconnect, 3D view). See [`MODERNIZATION.md`](MODERNIZATION.md) and [`CHANGELOG`](CHANGELOG).
+>
+> **Download the prebuilt app:** see the [Releases](../../releases) page. The app is
+> ad‑hoc signed (not notarized), so on first launch **right‑click the app → Open** to get
+> past Gatekeeper.
+>
+> Original project: [flyduino/kissfc-chrome-gui](https://github.com/flyduino/kissfc-chrome-gui).
+> Licensed under GPL‑3.0 (unchanged).
+
+---
+
 
 ## Installation
 

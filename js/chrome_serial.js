@@ -196,37 +196,47 @@ var chromeSerial = {
             if (self.connectionId) {
                 chrome.serial.send(self.connectionId, data, function (sendInfo) {
                     // track sent bytes for statistics
-
-                    if (typeof sendInfo !== 'undefined') {
-
+                    if (typeof sendInfo !== 'undefined' && !sendInfo.error) {
                         self.bytesSent += sendInfo.bytesSent;
 
-                        // fire callback
+                        // fire callback (only on success, to preserve protocol sequencing)
                         if (callback) callback(sendInfo);
+                    } else {
+                        // Send failed. Previously this branch did NOTHING, which
+                        // left self.transmitting stuck true so no further data was
+                        // ever sent (port opens but handshake never goes out).
+                        // Log the real error and fall through to recover the queue.
+                        var msg = (chrome.runtime.lastError && chrome.runtime.lastError.message) ||
+                                  (sendInfo && sendInfo.error) || 'unknown error';
+                        console.log('SERIAL: send failed (' + msg + ')');
+                    }
 
-                        // remove data for current transmission form the buffer
-                        self.outputBuffer.shift();
+                    // Always advance the queue so a failed send can't wedge the
+                    // transmitter.
+                    self.outputBuffer.shift();
 
-                        // if there is any data in the queue fire send immediately, otherwise stop trasmitting
-                        if (self.outputBuffer.length) {
-                            // keep the buffer withing reasonable limits
-                            if (self.outputBuffer.length > 100) {
-                                var counter = 0;
+                    // if there is any data in the queue fire send immediately, otherwise stop trasmitting
+                    if (self.outputBuffer.length) {
+                        // keep the buffer withing reasonable limits
+                        if (self.outputBuffer.length > 100) {
+                            var counter = 0;
 
-                                while (self.outputBuffer.length > 100) {
-                                    self.outputBuffer.pop();
-                                    counter++;
-                                }
-
-                                console.log('SERIAL: Send buffer overflowing, dropped: ' + counter + ' entries');
+                            while (self.outputBuffer.length > 100) {
+                                self.outputBuffer.pop();
+                                counter++;
                             }
 
-                            send();
-                        } else {
-                            self.transmitting = false;
+                            console.log('SERIAL: Send buffer overflowing, dropped: ' + counter + ' entries');
                         }
+
+                        send();
+                    } else {
+                        self.transmitting = false;
                     }
                 });
+            } else {
+                // no open connection: don't leave the transmitter wedged
+                self.transmitting = false;
             }
         }
 

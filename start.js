@@ -2,7 +2,7 @@ var pkg = require('./package.json');
 
 nw.Window.open('./main.html', {
     'id': 'kissgui',
-    'title': 'KISS-GUI ' + pkg.version,
+    'title': 'KISS-GUI ' + pkg.version + ' · Apple Silicon',
     'height': 600,
     'width': 970,
     "min_width": 900,

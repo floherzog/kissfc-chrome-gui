@@ -1,3 +1,29 @@
+## 2.0.34-arm64  (macOS Apple Silicon build)
+- Native Apple Silicon (arm64) macOS build — fixes repeated crashes on Apple
+  Silicon Macs / recent macOS (the old Intel build ran under Rosetta 2 and
+  segfaulted). See MODERNIZATION.md.
+- Build via ./build-macos-arm64.sh (NW.js 0.77 arm64). Window title shows
+  "· Apple Silicon".
+- Fix Backup/Restore on the Configuration tab: replaced chrome.fileSystem
+  (which fails under NW.js with "Invalid calling page") with NW.js-native file
+  dialogs + Node fs. Backup now writes the FC config to a .txt file; Restore
+  reads it back. Backup filename now includes a date/time stamp
+  (kissfc-backup-YYYY-MM-DD_HHMMSS.txt).
+- Fix the .hex firmware file pickers (FC, FC v2, ESC flashers) — same
+  chrome.fileSystem bug; now use NW.js-native open dialogs. (The flash operation
+  itself is unchanged and still needs hardware testing.)
+- Remove obsolete `--disable-features=nw2` chromium-arg.
+- Add ./run-macos-debug.sh to launch the build with console logging.
+- Fix serial layer wedging permanently after a single failed send: chrome_serial
+  send() ignored failed sends (undefined sendInfo / sendInfo.error), leaving
+  `transmitting` stuck true so no further data was ever sent (port opens but the
+  bootloader handshake never goes out → "won't connect"). Now logs the real error
+  ("SERIAL: send failed (...)") and recovers the transmit queue.
+- Fix 3D view (Data Output tab) crashing every frame with
+  "Cannot read properties of undefined (reading '0')": the animation loop read
+  telemetry (GyroRaw/ACCRaw) before it had arrived. Now skips frames until
+  telemetry is present.
+
 ## 2.0.8
 - Add motor output remapping
 

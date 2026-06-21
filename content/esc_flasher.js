@@ -232,44 +232,43 @@ CONTENT.esc_flasher.initialize = function (callback) {
         $("#select_file").on("click", function () {
             if (!$(this).hasClass("disabled")) {
                 $("#status").html("");
-                chrome.fileSystem.chooseEntry({ type: 'openFile', accepts: [{ extensions: ['hex'] }] }, function (fileEntry) {
-                    if (chrome.runtime.lastError) {
-                        console.error(chrome.runtime.lastError.message);
+                // NW.js native open dialog (chrome.fileSystem fails under NW.js)
+                var input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.hex';
+                input.style.display = 'none';
+                input.addEventListener('change', function () {
+                    var path = this.value;
+                    document.body.removeChild(input);
+                    if (!path) { console.log('No file selected.'); return; }
+                    console.log('Loading esc firmware from: ' + path);
+                    var intel_hex;
+                    try {
+                        var fs = require('fs');
+                        if (fs.statSync(path).size > 1048576) {
+                            console.log('File limit (1 MB) exceeded, aborting');
+                            return;
+                        }
+                        intel_hex = fs.readFileSync(path, 'utf8');
+                    } catch (err) {
+                        console.error('Could not read file: ' + err);
                         return;
                     }
+                    console.log('File loaded');
+                    self.pages = parseBootloaderHexFile(intel_hex);
 
-                    chrome.fileSystem.getDisplayPath(fileEntry, function (path) {
-                        console.log('Loading esc firmware from: ' + path);
-                        fileEntry.file(function (file) {
-                            var reader = new FileReader();
-                            reader.onprogress = function (e) {
-                                if (e.total > 1048576) {
-                                    console.log('File limit (1 MB) exceeded, aborting');
-                                    reader.abort();
-                                }
-                            };
-                            reader.onloadend = function (e) {
-                                if (e.total != 0 && e.total == e.loaded) {
-                                    console.log('File loaded');
-                                    var intel_hex = e.target.result;
-
-                                    self.pages = parseBootloaderHexFile(intel_hex);
-
-                                    if (self.pages !== undefined) {
-                                        console.log("HEX OS OK " + self.pages.length + " blocks loaded");
-                                        $("#file_info").html($.i18n("text.esc-flasher-loaded", self.pages.length, path));
-                                        $("#flash").show();
-                                    } else {
-                                        console.log("Corrupted esc firmware file");
-                                        $("#file_info").html($.i18n("text.esc-flasher-invalid-firmware"));
-                                        $("#flash").hide();
-                                    }
-                                }
-                            };
-                            reader.readAsText(file);
-                        });
-                    });
-                });
+                    if (self.pages !== undefined) {
+                        console.log("HEX OS OK " + self.pages.length + " blocks loaded");
+                        $("#file_info").html($.i18n("text.esc-flasher-loaded", self.pages.length, path));
+                        $("#flash").show();
+                    } else {
+                        console.log("Corrupted esc firmware file");
+                        $("#file_info").html($.i18n("text.esc-flasher-invalid-firmware"));
+                        $("#flash").hide();
+                    }
+                }, false);
+                document.body.appendChild(input);
+                input.click();
             };
         });
 

@@ -53,6 +53,13 @@ CONTENT.data_output.initialize = function (callback) {
 
             if (frameTime > 0) {
 
+                // Telemetry arrives asynchronously over serial; the animation
+                // loop starts first, so skip frames until GyroRaw/ACCRaw exist
+                // (otherwise reading [0] of undefined throws every frame).
+                if (!self.telemetry || !self.telemetry['GyroRaw'] || !self.telemetry['ACCRaw']) {
+                    return;
+                }
+
                 imuUpdate(+self.telemetry['GyroRaw'][0] * 2000 * Math.PI / 180,
                     -self.telemetry['GyroRaw'][1] * 2000 * Math.PI / 180,
                     +self.telemetry['GyroRaw'][2] * 2000 * Math.PI / 180,
